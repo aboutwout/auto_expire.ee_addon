@@ -117,7 +117,7 @@ class Auto_expire
 
     if ($current == '' OR $current == $this->version) return FALSE;
     if ($current < '0.1') { }// Update to next version 0.5
-    $DB->query("UPDATE exp_extensions SET version = '".$DB->escape_str($this->version)."' WHERE class = 'Twagger'");
+    $DB->query("UPDATE exp_extensions SET version = '".$DB->escape_str($this->version)."' WHERE class = 'Auto_expire'");
   }
   // END
 
@@ -126,9 +126,8 @@ class Auto_expire
   */
   function disable_extension() {
     global $DB;
-    $sql[] = 'DROP TABLE IF EXISTS `exp_twagger_settings`';		
-    $sql[] = 'DROP TABLE IF EXISTS `exp_twagger_tags`';		
-    $sql[] = "DELETE FROM exp_extensions WHERE class = 'Twagger'";		
+    $sql[] = 'DROP TABLE IF EXISTS `exp_auto_expire_settingsxpire_settings`';			
+    $sql[] = "DELETE FROM exp_extensions WHERE class = 'Auto_expire'";		
 
     foreach($sql as $query) {
       $DB->query($query);
