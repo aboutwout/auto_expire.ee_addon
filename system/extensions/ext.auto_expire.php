@@ -18,7 +18,7 @@ class Auto_expire
   public $settings            = array();
   
   public $name                = 'Auto Expire';
-  public $version             = '0.2';
+  public $version             = '1.0';
   public $description         = "Automatically set an entry's expiration date.";
   public $settings_exist      = 'n';
   public $docs_url            = '';
