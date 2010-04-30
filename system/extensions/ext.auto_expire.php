@@ -75,7 +75,7 @@ class Auto_expire
   
   
   /**
-  * Modifies control panel html by adding the required category
+  * Modifies control panel html by adding the Auto Expire
   * settings panel to Admin > Weblog Administration > Weblog Management > Edit Weblog
   */
   function edit_weblog_prefs($out)
