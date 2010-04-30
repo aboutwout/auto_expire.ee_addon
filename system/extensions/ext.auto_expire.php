@@ -23,8 +23,17 @@ class Auto_expire
   public $settings_exist      = 'n';
   public $docs_url            = '';
   
-  private $_expire_value      = false;
-  private $_expire_period     = false;
+  private $_time_diff         = false;
+  private $_time_unit         = false;
+  
+  public $time_units          = array(
+                                  1 =>'minutes',
+                                  2 => 'hours',
+                                  3 => 'days',
+                                  4 => 'weeks',
+                                  5 => 'months',
+                                  6 => 'years'
+                                );
   
   /**
   * Constructor - Extensions use this for settings
@@ -47,19 +56,20 @@ class Auto_expire
   */
   function set_expiration_date()
   {
-		global $EE, $IN;
-		
-		if ($EE === NULL) return;
-		
+		global $IN;
+	
+    		
 		// weblog has auto expire settings set and has no expiration date set
 		if ($exp_time = $this->_auto_expire_weblog($_POST['weblog_id']) && empty($_POST['expiration_date'])) {
+		  
       $entry_date = new DateTime($IN->GBL('entry_date'));
       $expiration_date = clone $entry_date;
       
+      $expiration_date->modify('+'.$this->_time_diff.' '.$this->time_units[$this->_time_unit]);
+      
+      $_POST['expiration_date'] = $expiration_date->format('Y-m-d H:i');
 		}
 
-		return;
-    
   }
   // END
   
@@ -98,20 +108,18 @@ class Auto_expire
 			$weblog_id = false;
 		}
 		
-///		$this->_set_preferences($weblog_id);
+		$this->_fetch_preferences($weblog_id);
 
 		//	=============================================
 		//	Find Table
 		//	=============================================
 		preg_match('/id=[\'"]posting_on[\'"].*?<\/table>/si', $out, $table);
 
-    $periods = array('minutes', 'hours', 'days', 'weeks', 'months', 'years');
-
-    $period_select = $DSP->input_select_header('auto_expire_period', null, 1, '45%');
-    $period_select .= $DSP->input_select_option('false', $LANG->line('select_period'));
+    $period_select = $DSP->input_select_header('time_unit', null, 1, '45%');
+    $period_select .= $DSP->input_select_option(0, $LANG->line('select_period'));
     
-    foreach( $periods as $period ) {
-      $period_select .= $DSP->input_select_option($period, $LANG->line($period), $this->_expire_value == $period ? 'y' : null);
+    foreach( $this->time_units as $key => $time_unit ) {
+      $period_select .= $DSP->input_select_option($key, $LANG->line($time_unit), $this->_time_unit == $key ? 'y' : null);
     }
     
     $period_select .= $DSP->input_select_footer();
@@ -129,7 +137,7 @@ class Auto_expire
 		$r .= $DSP->tr();
 		$r .= $DSP->table_qcell('tableCellOne', $DSP->qspan('defaultBold', $LANG->line('pref_auto_expire')), '50%');
 
-		$r .= $DSP->table_qcell('tableCellOne', $DSP->input_text('auto_expire_value', $this->_expire_value, '', '', '', '25%') . $period_select , '50%');
+		$r .= $DSP->table_qcell('tableCellOne', $DSP->input_text('time_diff', $this->_time_diff, '', '', '', '25%') . $period_select , '50%');
 		$r .= $DSP->tr_c();
 
 		$r.= $DSP->table_c();
@@ -143,16 +151,50 @@ class Auto_expire
   }
   // END
   
+  function _fetch_preferences($weblog_id)
+  {
+    global $DB;
+    
+    if( !$weblog_id ) return false;
+    
+    $query = $DB->query("SELECT * FROM exp_auto_expire WHERE weblog_id = $weblog_id");
+    
+    if($query->num_rows > 0) {
+      
+      $this->_time_diff = $query->row['time_diff'];
+      $this->_time_unit = $query->row['time_unit'];
+      
+    }
+    
+    return false;
+    
+  }
+  
   
   /**
   * Saves the auto expire settings.
   */
   function save_weblog_settings()
   {
-    global $DB;
+    global $DB, $IN;
     
-      
+    if (!isset($_POST['weblog_id']) || !isset($_POST['time_diff']) || !isset($_POST['time_unit']) ) return;
     
+    if ($IN->GBL('M') == 'blog_admin' && $IN->GBL('P') == 'update_preferences') {
+		  
+		  if (!$_POST['time_diff'] || !$_POST['time_unit']) {
+        $DB->query("DELETE FROM exp_auto_expire WHERE weblog_id = '".$DB->escape_str($_POST['weblog_id'])."'");		    
+		  } else {
+  		  // insert new values or update existing ones
+  			$DB->query("INSERT INTO exp_auto_expire VALUES('', '".$DB->escape_str($_POST['weblog_id'])."', '".$DB->escape_str($_POST['time_diff'])."', '".$DB->escape_str($_POST['time_unit'])."') ON DUPLICATE KEY UPDATE `weblog_id`=values(`weblog_id`), `time_diff`=values(`time_diff`), `time_unit`=values(`time_unit`)");
+		    
+		  }
+		  
+		}
+
+		unset($_POST['time_diff']);
+		unset($_POST['time_unit']);
+		
   }
   // END
   
@@ -168,19 +210,19 @@ class Auto_expire
     
     if( ! $weblog_id ) return false;
     
-		$query = $DB->query("SELECT weblog_id, value, period FROM exp_auto_expire_settings WHERE weblog_id = {$weblog_id}");
+		$query = $DB->query("SELECT weblog_id, time_diff, time_unit FROM exp_auto_expire WHERE weblog_id = {$weblog_id}");
 		
 		// If no settings have been set for this weblog, unset variables and return false
 		if($query->num_rows === 0) {
 		  
-      $this->_expire_value = false;
-      $this->_expire_period = false;
+      $this->_time_diff = false;
+      $this->_time_unit = false;
 
       return false;
 		}
 		
-    $this->_expire_value = $query->row['value'];
-    $this->_expire_period = $query->row['period'];    
+    $this->_time_diff = $query->row['time_diff'];
+    $this->_time_unit = $query->row['time_unit'];    
     
     return true;
     
@@ -219,7 +261,7 @@ class Auto_expire
 
     // add extension table
     $sql[] = 'DROP TABLE IF EXISTS `exp_auto_expire`';
-    $sql[] = "CREATE TABLE `exp_auto_expire` (`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY, `weblog_id` INT NOT NULL, `time_diff` INT NOT NULL, `time_unit` INT NOT NULL, `enabled` TINYINT(1) NOT NULL)";
+    $sql[] = "CREATE TABLE `exp_auto_expire` (`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY, `weblog_id` INT NOT NULL UNIQUE KEY, `time_diff` INT NOT NULL, `time_unit` INT NOT NULL)";
 
     // run all sql queries
     foreach ($sql as $query) {
