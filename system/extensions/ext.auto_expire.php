@@ -178,7 +178,7 @@ class Auto_expire
         'status' => $row['status_name']
       );
       
-      $sql = $DB->update_string('exp_weblog_titles', $data, "weblog_id = '".$row['weblog_id']."' AND status != '".$row['status_name']."' AND expiration_date <  ".time());
+      $sql = $DB->update_string('exp_weblog_titles', $data, "weblog_id = '".$row['weblog_id']."' AND status != '".$row['status_name']."' AND expiration_date != '0' AND expiration_date <  ".time());
             
       $DB->query($sql);
       
